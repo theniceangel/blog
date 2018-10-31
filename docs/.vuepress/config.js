@@ -27,7 +27,8 @@ module.exports = {
           title: 'Vue',
           collapsable: false,
           children: [
-            'vue/vuex.md'
+            'vue/vuex.md',
+            'vue/vue-router.md'
           ]
         }
       ],
