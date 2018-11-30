@@ -110,8 +110,83 @@ function spawn (gen) {
 spawn(gen)
 ```
 
-之上的代码也就是利用了 Generator 函数的状态机来不断的递归去调用 step 方法，从而达到自执行的目的。可以从代码看出，yield 后面必须跟着一个 thunk 函数，因为 value 必须是个函数，这样才能不断递归调用 step 方法来执行 next 指针。
+之上的代码也就是利用了 Generator 函数的状态机来递归调用 step 方法，从而达到自执行的目的。可以从代码看出，yield 后面必须跟着一个 thunk 函数，因为 value 必须是个函数，这样才能不断递归调用 step 方法来执行 next 指针。
 
-## co 库
+## co
 
 之前的 thunk 函数，包括简易自执行 Generator 的 spawn 函数都是为了理解怎样去自动管理 Generator。用于生产环境肯定还是需要用 co，所以学习下 co 的源码。
+
+```js
+function co(gen) {
+  var ctx = this;
+  var args = slice.call(arguments, 1);
+
+  return new Promise(function(resolve, reject) {
+    // 获取 generator 函数返回的遍历器对象
+    if (typeof gen === 'function') gen = gen.apply(ctx, args);
+    // 如果不是 generator 函数，直接 resolve 函数返回值
+    if (!gen || typeof gen.next !== 'function') return resolve(gen);
+    // 手动发起 generator 的 next 递归执行
+    onFulfilled();
+
+    function onFulfilled(res) {
+      var ret;
+      try {
+        ret = gen.next(res);
+      } catch (e) {
+        return reject(e);
+      }
+      next(ret);
+      return null;
+    }
+
+    function onRejected(err) {
+      var ret;
+      try {
+        ret = gen.throw(err);
+      } catch (e) {
+        return reject(e);
+      }
+      next(ret);
+    }
+    // 递归判断 generator 的状态，直到 done 为 true
+    function next(ret) {
+      if (ret.done) return resolve(ret.value);
+      // 将 yield 后面的表达式 promise 化
+      var value = toPromise.call(ctx, ret.value);
+      if (value && isPromise(value)) return value.then(onFulfilled, onRejected);
+      return onRejected(new TypeError('You may only yield a function, promise, generator, array, or object, '
+        + 'but the following object was passed: "' + String(ret.value) + '"'));
+    }
+  });
+}
+```
+
+从源码可以看出，co 接受一个 generator 函数，返回一个 Promise，内部会根据 generator 的状态去递归的执行 generator 的 next，从而达到自执行的目的。这里最有趣的是 `toPromise` 这个函数，作用就是递归的将 yield 后面的表达式 Promise 化。
+
+```js
+function toPromise(obj) {
+  if (!obj) return obj;
+  if (isPromise(obj)) return obj;
+  if (isGeneratorFunction(obj) || isGenerator(obj)) return co.call(this, obj);
+  if ('function' == typeof obj) return thunkToPromise.call(this, obj);
+  if (Array.isArray(obj)) return arrayToPromise.call(this, obj);
+  if (isObject(obj)) return objectToPromise.call(this, obj);
+  return obj;
+}
+```
+
+`toPromise` 内部会根据 generator 的 value 值类型来递归的 Promise 化内部所有的结构。其中内部详细的逻辑[参考源码](https://github.com/tj/co/blob/master/index.js)。这样做有什么好处呢，举个栗子：
+
+```js
+co(function* () {
+  var res = yield [
+    Promise.resolve(1),
+    Promise.resolve(2),
+    Promise.resolve(3),
+  ];
+  console.log(res)
+}).catch(onerror);
+```
+
+如果我们希望得到 res 为 [1, 2, 3]，必须手动管理 yield 后面所有的 Promise 状态，等所有的 Promise 都 resolve 之后得到 res，再调 generator().next(res)。这样的话，对于开发是很麻烦的，也很难理清各种状态。所以 co 库帮使用者处理了这些问题。
