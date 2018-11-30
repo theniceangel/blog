@@ -30,6 +30,13 @@ module.exports = {
             'vue/vuex.md',
             'vue/vue-router.md'
           ]
+        },
+        {
+          title: '异步编程',
+          collapsable: false,
+          children: [
+            'async/co.md'
+          ]
         }
       ],
       '/books/' : [
