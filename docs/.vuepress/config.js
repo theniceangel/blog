@@ -37,6 +37,13 @@ module.exports = {
           children: [
             'async/co.md'
           ]
+        },
+        {
+          title: 'webpack 源码篇',
+          collapsable: false,
+          children: [
+            'webpack/source-code/init.md'
+          ]
         }
       ],
       '/books/' : [
