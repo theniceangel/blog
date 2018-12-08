@@ -39,7 +39,14 @@ module.exports = {
           ]
         },
         {
-          title: 'webpack 源码篇',
+          title: 'webpack 源码之准备篇',
+          collapsable: false,
+          children: [
+            'webpack/source-code-prepare/tapable-0.2.md'
+          ]
+        },
+        {
+          title: 'webpack 源码之分析篇',
           collapsable: false,
           children: [
             'webpack/source-code/init.md'
