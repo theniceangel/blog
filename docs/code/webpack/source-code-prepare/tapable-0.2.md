@@ -248,9 +248,10 @@ function Tapable () {
     })
 
     t.applyPluginsParallel('parallel', '参数1', (err) => {
+      // print '抛出错误了1'
       console.log(err)
     })
     ```
 
-从源码上来看，tapable 是提供了很多 API 来对应不同调用 handler 的场景，有同步执行，有异步执行，还有串行异步，并行异步等。这些都是珍贵的技巧，不管是 express，还是 VueRouter 的源码，都利用这些同异执行机制。    
+从源码上来看，tapable 是提供了很多 API 来对应不同调用 handler 的场景，有同步执行，有异步执行，还有串行异步，并行异步等。这些都是珍贵的技巧，不管是 express，还是 VueRouter 的源码，都利用这些同异步执行机制。    
     
