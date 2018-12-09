@@ -44,6 +44,31 @@ function Tapable () {
     [ '参数1' ]
     This is a emit handler
     ```
+    
+    **源码如下**
+
+    ```js
+    Tapable.prototype.applyPlugins = function applyPlugins(name) {
+      if(!this._plugins[name]) return;
+      var args = Array.prototype.slice.call(arguments, 1);
+      var plugins = this._plugins[name];
+      for(var i = 0; i < plugins.length; i++)
+        plugins[i].apply(this, args);
+    };
+
+    Tapable.prototype.plugin = function plugin(name, fn) {
+      if(Array.isArray(name)) {
+        name.forEach(function(name) {
+          this.plugin(name, fn);
+        }, this);
+        return;
+      }
+      if(!this._plugins[name]) this._plugins[name] = [fn];
+      else this._plugins[name].push(fn);
+    };
+    ```
+
+    很简单，内部维护 _plugins 属性来缓存 plugin 名称以及 handler。
 
 2.  **apply**
 
@@ -71,6 +96,18 @@ function Tapable () {
     t.apply(plugin) // print 'This is webpackPlugin'
     ```
 
+    **源码如下**
+
+    ```js
+    Tapable.prototype.apply = function apply() {
+      for(var i = 0; i < arguments.length; i++) {
+        arguments[i].apply(this);
+      }
+    };
+    ```
+
+    也很简单，依次执行每个插件的 apply 方法。
+
 3.  **applyPluginsWaterfall**
 
     ```js
@@ -94,6 +131,24 @@ function Tapable () {
 
     const ret = t.applyPluginsWaterfall('waterfall', 'init', 'args1') // ret => 'result2'
     ```
+
+    **源码如下**
+
+    ```js
+    Tapable.prototype.applyPluginsWaterfall = function applyPluginsWaterfall(name, init) {
+      if(!this._plugins[name]) return init;
+      var args = Array.prototype.slice.call(arguments, 1);
+      var plugins = this._plugins[name];
+      var current = init;
+      for(var i = 0; i < plugins.length; i++) {
+        args[0] = current;
+        current = plugins[i].apply(this, args);
+      }
+      return current;
+    };
+    ```
+
+    上一个 handler 返回的值，会作为下一个 handler的第一个参数。
 
 4.  **applyPluginsBailResult**
 
@@ -119,6 +174,24 @@ function Tapable () {
     t.applyPluginsBailResult('bailResult', '参数1', '参数2')
     ```
     
+    **源码如下**
+
+    ```js
+    Tapable.prototype.applyPluginsBailResult = function applyPluginsBailResult(name, init) {
+      if(!this._plugins[name]) return;
+      var args = Array.prototype.slice.call(arguments, 1);
+      var plugins = this._plugins[name];
+      for(var i = 0; i < plugins.length; i++) {
+        var result = plugins[i].apply(this, args);
+        if(typeof result !== "undefined") {
+          return result;
+        }
+      }
+    };
+    ```
+
+    只要 handler 返回的值 `!== undefined`，就会停止调用接下来的 handler。
+
 5.  **applyPluginsAsyncSeries & applyPluginsAsync**（支持异步）
 
     ```js
@@ -152,6 +225,30 @@ function Tapable () {
       console.log('这是 applyPluginsAsyncSeries 的 callback')
     })
     ```
+
+    **源码如下**
+
+    ```js
+    Tapable.prototype.applyPluginsAsyncSeries = Tapable.prototype.applyPluginsAsync = function applyPluginsAsyncSeries(name) {
+      var args = Array.prototype.slice.call(arguments, 1);
+      var callback = args.pop();
+      var plugins = this._plugins[name];
+      if(!plugins || plugins.length === 0) return callback();
+      var i = 0;
+      var _this = this;
+      args.push(copyProperties(callback, function next(err) {
+        if(err) return callback(err);
+        i++;
+        if(i >= plugins.length) {
+          return callback();
+        }
+        plugins[i].apply(_this, args);
+      }));
+      plugins[0].apply(this, args);
+    };
+    ```
+
+    applyPluginsAsyncSeries 内部维护了一个 next 函数，这个函数作为每个 handler 的最后一个参数传入，handler 内部支持异步操作，但是必须手动调用 next 函数，才能执行到下一个 handler。
     
 6.  **applyPluginsAsyncSeriesBailResult**（支持异步） 
 
@@ -182,6 +279,30 @@ function Tapable () {
     })
     // print '这是 applyPluginsAsyncSeriesBailResult 的 callback'
     ```
+
+    **源码如下**
+
+    ```js
+    Tapable.prototype.applyPluginsAsyncSeriesBailResult = function applyPluginsAsyncSeriesBailResult(name) {
+      var args = Array.prototype.slice.call(arguments, 1);
+      var callback = args.pop();
+      if(!this._plugins[name] || this._plugins[name].length === 0) return callback();
+      var plugins = this._plugins[name];
+      var i = 0;
+      var _this = this;
+      args.push(copyProperties(callback, function next() {
+        if(arguments.length > 0) return callback.apply(null, arguments);
+        i++;
+        if(i >= plugins.length) {
+          return callback();
+        }
+        plugins[i].apply(_this, args);
+      }));
+      plugins[0].apply(this, args);
+    };
+    ```
+
+    applyPluginsAsyncSeriesBailResult 内部维护了一个 next 函数，这个函数作为每个 handler 的最后一个参数传入，handler 内部支持异步操作，但是必须手动调用 next 函数，才能执行到下一个 handler，next 函数可以传入参数，这样会直接执行 callback。
 
 7.  **applyPluginsAsyncWaterfall**（支持异步）
 
@@ -220,6 +341,28 @@ function Tapable () {
     来自第二个 handler
     ```
 
+    **源码如下**
+
+    ```js
+    Tapable.prototype.applyPluginsAsyncWaterfall = function applyPluginsAsyncWaterfall(name, init, callback) {
+      if(!this._plugins[name] || this._plugins[name].length === 0) return callback(null, init);
+      var plugins = this._plugins[name];
+      var i = 0;
+      var _this = this;
+      var next = copyProperties(callback, function(err, value) {
+        if(err) return callback(err);
+        i++;
+        if(i >= plugins.length) {
+          return callback(null, value);
+        }
+        plugins[i].call(_this, value, next);
+      });
+      plugins[0].call(this, init, next);
+    };
+    ```
+
+    applyPluginsAsyncWaterfall 内部维护了一个 next 函数，这个函数作为每个 handler 的最后一个参数传入，handler 内部支持异步操作，但是必须手动调用 next 函数，才能执行到下一个 handler，next 函数可以传入参数，第一个参数为 err， 第二参数为上一个 handler 返回值。
+
 8.  **applyPluginsParallel**（支持异步）
 
     ```js
@@ -253,5 +396,34 @@ function Tapable () {
     })
     ```
 
-从源码上来看，tapable 是提供了很多 API 来对应不同调用 handler 的场景，有同步执行，有异步执行，还有串行异步，并行异步等。这些都是珍贵的技巧，不管是 express，还是 VueRouter 的源码，都利用这些同异步执行机制。    
+    **源码如下**
+
+    ```js
+    Tapable.prototype.applyPluginsParallel = function applyPluginsParallel(name) {
+      var args = Array.prototype.slice.call(arguments, 1);
+      var callback = args.pop();
+      if(!this._plugins[name] || this._plugins[name].length === 0) return callback();
+      var plugins = this._plugins[name];
+      var remaining = plugins.length;
+      args.push(copyProperties(callback, function(err) {
+        if(remaining < 0) return; // ignore
+        if(err) {
+          remaining = -1;
+          return callback(err);
+        }
+        remaining--;
+        if(remaining === 0) {
+          return callback();
+        }
+      }));
+      for(var i = 0; i < plugins.length; i++) {
+        plugins[i].apply(this, args);
+        if(remaining < 0) return;
+      }
+    };
+    ```
+
+    applyPluginsParallel 并行地调用 handler。内部通过闭包维护了 remaining 变量，用来判断内部的函数是否真正执行完，handler 的最后一个参数是一个函数 check。如果 handler 内部用户想要的逻辑执行完，必须调用 check 函数来告诉 tapable，进而才会执行 args 数组的最后一个 check 函数。
+
+从源码上来看，tapable 是提供了很多 API 来对应不同调用 handler 的场景，有同步执行，有异步执行，还有串行异步，并行异步等。这些都是一些高级的技巧，不管是 express，还是 VueRouter 的源码，都利用这些同异步执行机制，但是可以看出程序是有边界的。也就是约定成俗，从最后一个 applyPluginsParallel 函数来看，用户必须调用 check 函数，否则 tapable 怎么知道你内部是否有异步操作，并且异步操作在某个时候执行完了呢。
     
