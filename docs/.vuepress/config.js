@@ -28,7 +28,8 @@ module.exports = {
           collapsable: false,
           children: [
             'vue/vuex.md',
-            'vue/vue-router.md'
+            'vue/vue-router.md',
+            'vue/vue-array-optimize.md'
           ]
         },
         {
