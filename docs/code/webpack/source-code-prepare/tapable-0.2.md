@@ -425,5 +425,86 @@ function Tapable () {
 
     applyPluginsParallel 并行地调用 handler。内部通过闭包维护了 remaining 变量，用来判断内部的函数是否真正执行完，handler 的最后一个参数是一个函数 check。如果 handler 内部用户想要的逻辑执行完，必须调用 check 函数来告诉 tapable，进而才会执行 args 数组的最后一个 check 函数。
 
+9. ** applyPluginsParallelBailResult **（支持异步）
+
+    ```js
+    void applyPluginsParallelBailResult(
+      name: string,
+      args: any...,
+      callback: (err: Error, result: any) -> void
+    )
+    ```
+
+    并行的执行函数，每个 handler 的最后一个参数都是 next 函数，next 函数必须调用，如果给 next 函数传参，会直接走到 callback 的逻辑。callback 执行的时机是跟 handler 注册的顺序有关，而不是跟 handler 内部调用 next 的时机有关。
+
+    ```js
+    t.plugin('applyPluginsParallelBailResult', (next) => {
+      console.log(1)
+      setTimeout(() => {
+        next('has args 1')
+      }, 3000)
+    })
+
+    t.plugin('applyPluginsParallelBailResult', (next) => {
+      console.log(2)
+      setTimeout(() => {
+        next('has args 2')
+      })
+    })
+
+    t.plugin('applyPluginsParallelBailResult', (next) => {
+      console.log(3)
+      next('has args 3')
+    })
+
+    t.applyPluginsParallelBailResult('applyPluginsParallelBailResult', (result) => {
+      console.log(result)
+    })
+
+    // 打印如下
+    1
+    2
+    3
+    has args 1
+
+    虽然第一个 handler 的 next 函数是延迟 3s 才执行，但是注册的顺序是在最前面，所以 callback 的 result 参数值是 'has args 1'。
+    ```
+
+    **源码如下**
+
+    ```js
+    Tapable.prototype.applyPluginsParallelBailResult = function applyPluginsParallelBailResult(name) {
+      var args = Array.prototype.slice.call(arguments, 1);
+      var callback = args[args.length - 1];
+      if(!this._plugins[name] || this._plugins[name].length === 0) return callback();
+      var plugins = this._plugins[name];
+      var currentPos = plugins.length;
+      var currentResult;
+      var done = [];
+      for(var i = 0; i < plugins.length; i++) {
+        args[args.length - 1] = (function(i) {
+          return copyProperties(callback, function() {
+            if(i >= currentPos) return; // ignore
+            done.push(i);
+            if(arguments.length > 0) {
+              currentPos = i + 1;
+              done = fastFilter.call(done, function(item) {
+                return item <= i;
+              });
+              currentResult = Array.prototype.slice.call(arguments);
+            }
+            if(done.length === currentPos) {
+              callback.apply(null, currentResult);
+              currentPos = 0;
+            }
+          });
+        }(i));
+        plugins[i].apply(this, args);
+      }
+    };
+    ```
+
+    for 循环里面并行的执行 handler，handler 的最后一个参数是一个匿名回调函数，这个匿名函数必须在 handler 里面手动的执行。而 callback 的执行时机就是根据 handler 的注册顺序有关。
+
 从源码上来看，tapable 是提供了很多 API 来对应不同调用 handler 的场景，有同步执行，有异步执行，还有串行异步，并行异步等。这些都是一些高级的技巧，不管是 express，还是 VueRouter 的源码，都利用这些同异步执行机制，但是可以看出程序是有边界的。也就是约定成俗，从最后一个 applyPluginsParallel 函数来看，用户必须调用 check 函数，否则 tapable 怎么知道你内部是否有异步操作，并且异步操作在某个时候执行完了呢。
     
