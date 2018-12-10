@@ -43,7 +43,8 @@ module.exports = {
           title: 'webpack 源码之准备篇',
           collapsable: false,
           children: [
-            'webpack/source-code-prepare/tapable-0.2.md'
+            'webpack/source-code-prepare/tapable-0.2.md',
+            'webpack/source-code-prepare/tapable-2.0.md'
           ]
         },
         {
