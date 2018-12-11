@@ -16,6 +16,11 @@ module.exports = {
         items: []
       },
       { 
+        text: '文章', 
+        link: '/articles/index',
+        items: []
+      },
+      { 
         text: 'Github', 
         link: 'https://github.com/theniceangel',
         items: []
