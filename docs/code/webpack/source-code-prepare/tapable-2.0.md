@@ -21,9 +21,9 @@
   SyncBailHook   | `tap` | 同步钩子，只要执行的 handler 有返回值，剩余 handler 不执行
   SyncLoopHook   | `tap` | 同步钩子，只要执行的 handler 有返回值，一直循环执行此 handler
   SyncWaterfallHook  | `tap` | 同步钩子，上一个 handler 的返回值作为下一个 handler 的输入值
-  AsyncParallelBailHook  | `tap` | 同步钩子，上一个 handler 的返回值作为下一个 handler 的输入值
+  AsyncParallelBailHook  | `tap` | 异步钩子，handler 并行触发，但是跟 handler 内部调用回调函数的逻辑有关
   AsyncParallelHook  | `tap` | 异步钩子，handler 并行触发
-  AsyncSeriesBailHook  | `tap` | 异步钩子，handler 并行触发，但是跟 handler 内部调用回调函数的逻辑有关
+  AsyncSeriesBailHook  | `tap` | 异步钩子，handler 串行触发，但是跟 handler 内部调用回调函数的逻辑有关
   AsyncSeriesHook  | `tap` | 异步钩子，handler 串行触发
   AsyncSeriesLoopHook  | `tap` | 异步钩子，可以触发 handler 循环调用
   AsyncSeriesWaterfallHook  | `tap` | 异步钩子，上一个 handler 可以根据内部的回调函数传值给下一个 handler
@@ -86,7 +86,7 @@ interface Tap {
 }
 ```
 
-因为我 name 为 2 的 handler 注册的时候，是传了一个对象，它的 before 属性为 1，说明这个 handler 要插到 name 为 1 的 handler 之前执行，而且打印的顺序在第二位，但是又因为 name 为 3 的 handler 注册的时候，stage 属性为 -1，比其他的 handler 的 stage 要小，所以它会被移到最前面执行。
+因为我 name 为 2 的 handler 注册的时候，是传了一个对象，它的 before 属性为 1，说明这个 handler 要插到 name 为 1 的 handler 之前执行，因此打印的顺序在第二位，但是又因为 name 为 3 的 handler 注册的时候，stage 属性为 -1，比其他的 handler 的 stage 要小，所以它会被移到最前面执行。
 
 ## 探索原理
 
@@ -108,7 +108,7 @@ exports.HookMap = require("./HookMap");
 exports.MultiHook = require("./MultiHook");
 ```
 
-各种钩子类以及钩子辅助类都挂载在对应的属性上。我们先来看 SyncHook。
+各种钩子类以及钩子辅助类都挂载在对应的属性上。我们先来看 `SyncHook`。
 
 ```js
 const Hook = require("./Hook");
@@ -296,7 +296,8 @@ class Hook {
 		if (typeof item.stage === "number") {
 			stage = item.stage;
 		}
-		let i = this.taps.length;
+    let i = this.taps.length;
+    // 根据 before，stage 属性，调整 handler 的执行顺序
 		while (i > 0) {
 			i--;
 			const x = this.taps[i];
@@ -323,7 +324,7 @@ class Hook {
 
 function createCompileDelegate(name, type) {
 	return function lazyCompileHook(...args) {
-    // 重新 this.call, this.promise, this.callAsync
+    // 重新赋值 this.call, this.promise, this.callAsync
     // 因为第一个调用 call 的时候，会走到 _createCall 去 compile，生成 fn
     // 但是第二次调用 call 的时候，fn 已经赋值给了 this.call 了，不需要走到 compile 的逻辑了。
 		this[name] = this._createCall(type);
@@ -532,7 +533,7 @@ create(options) {
 }
 ```
 
-从执行的逻辑来看，就是先从 taps 里面过滤出 handler，然后根据类型来生成对应的 fn。所以我们在调用 call、callAsync、promise 的时候，执行就是编译生成的 fn，并且把参数传入。
+从执行的逻辑来看，就是先从 taps 里面过滤出 handler，然后根据类型来生成对应的 fn。所以我们在调用 call、callAsync、promise 的时候，执行的就是编译生成的 fn，并且把参数传入。
 
 上面的例子是用到的 SyncHook，只会走到 `case "sync"` 的逻辑，我们**重点分析**如何生成 fn 的，其余的也是依葫芦画瓢。
 
@@ -618,7 +619,7 @@ fn = new Function(
     }
     ```
 
-    从接口来看，我们可以通过 intercept 方法来插入自己的逻辑，不仅是注册 handler 还是改变 tap 对象，这样使得钩子变得更灵活，更有弹性。
+    从接口来看，我们可以通过 intercept 方法来插入自己的逻辑，不仅可以注册 handler 还可以改变 tap 对象，这样使得钩子变得更灵活，更有弹性。
   
 -  **生成 fn 函数体的中间执行代码的字符串**
 
@@ -1260,4 +1261,4 @@ fn = new Function(
 
 ## 同异步钩子类的总结
 
-分析了所有的同异步钩子，那么 HookMap, MutilHook 的逻辑就更清晰了，这边就不分析了。根据之前的 tapable 版本，牵涉到异步执行的钩子，韩式内部肯定是存在递归的，这样写起来容易让人看懂。然而 2.0.0-beta 版本采用字符串拼接的方法把这些递归给抹平了，而且还会缓存每次编译的生成的 fn。这样来说，空间占用就变少了，性能更好了。
+分析了所有的同异步钩子，那么 HookMap, MutilHook 的逻辑就更清晰了，这边就不分析了。根据之前的 tapable 版本，牵涉到异步执行的钩子，函数内部肯定是存在递归的，这样写起来容易让人看懂。然而 2.0.0-beta 版本采用字符串拼接的方法把递归部分给抹平了，而且还会缓存每次编译的生成的 fn。这样来说，空间占用就变少了，性能更好了。
