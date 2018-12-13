@@ -1261,4 +1261,98 @@ fn = new Function(
 
 ## 同异步钩子类的总结
 
-分析了所有的同异步钩子，那么 HookMap, MutilHook 的逻辑就更清晰了，这边就不分析了。根据之前的 tapable 版本，牵涉到异步执行的钩子，函数内部肯定是存在递归的，这样写起来容易让人看懂。然而 2.0.0-beta 版本采用字符串拼接的方法把递归部分给抹平了，而且还会缓存每次编译的生成的 fn。这样来说，空间占用就变少了，性能更好了。
+分析了所有的同异步钩子，根据之前的 tapable 版本，牵涉到异步执行的钩子，函数内部肯定是存在递归的，这样写起来容易让人看懂。然而 2.0.0-beta 版本采用字符串拼接的方法把递归部分给抹平了，而且还会缓存每次编译的生成的 fn。这样来说，空间占用就变少了，性能更好了。
+
+## Tapable
+
+根据 [tapbale-0.2.8 源码分析](http://localhost:8080/blog/code/webpack/source-code-prepare/tapable-0.2.html)，Tapable 是唯一的类。那么 2.0.0-beta 版为了兼容之前的语法，应该怎么做呢。继续定位到 `Tapable.js`。
+
+```js
+const util = require("util");
+const SyncBailHook = require("./SyncBailHook");
+
+function Tapable() {
+    // 声明同步保险钩子
+    this._pluginCompat = new SyncBailHook(["options"]);
+    // 注册 handler，主要是为了将 pluginName camelize 化。
+	this._pluginCompat.tap(
+		{
+			name: "Tapable camelCase",
+			stage: 100
+		},
+		options => {
+			options.names.add(
+				options.name.replace(/[- ]([a-z])/g, (str, ch) => ch.toUpperCase())
+			);
+		}
+    );
+    // 在 hooks 属性上对应的钩子上注册 handler
+	this._pluginCompat.tap(
+		{
+			name: "Tapable this.hooks",
+			stage: 200
+		},
+		options => {
+			let hook;
+			for (const name of options.names) {
+				hook = this.hooks[name];
+				if (hook !== undefined) {
+					break;
+				}
+			}
+			if (hook !== undefined) {
+				const tapOpt = {
+					name: options.fn.name || "unnamed compat plugin",
+					stage: options.stage || 0
+				};
+				if (options.async) hook.tapAsync(tapOpt, options.fn);
+				else hook.tap(tapOpt, options.fn);
+				return true;
+			}
+		}
+	);
+}
+module.exports = Tapable;
+
+Tapable.addCompatLayer = function addCompatLayer(instance) {
+	Tapable.call(instance);
+	instance.plugin = Tapable.prototype.plugin;
+	instance.apply = Tapable.prototype.apply;
+};
+
+// 注册 handler，实际上会走到 _pluginCompat 属性上的第二个 handler，进而在对应的 hooks 注册了 handler。
+Tapable.prototype.plugin = util.deprecate(function plugin(name, fn) {
+	if (Array.isArray(name)) {
+		name.forEach(function(name) {
+			this.plugin(name, fn);
+		}, this);
+		return;
+	}
+	const result = this._pluginCompat.call({
+		name: name,
+		fn: fn,
+		names: new Set([name])
+	});
+	if (!result) {
+		throw new Error(
+			`Plugin could not be registered at '${name}'. Hook was not found.\n` +
+				"BREAKING CHANGE: There need to exist a hook at 'this.hooks'. " +
+				"To create a compatibility layer for this hook, hook into 'this._pluginCompat'."
+		);
+	}
+}, "Tapable.plugin is deprecated. Use new API on `.hooks` instead");
+
+Tapable.prototype.apply = util.deprecate(function apply() {
+	for (var i = 0; i < arguments.length; i++) {
+		arguments[i].apply(this);
+	}
+}, "Tapable.apply is deprecated. Call apply on the plugin directly instead");
+```
+
+Tapable 重构之后，为了兼容之前的版本，费了一点心思，首先 Tapable 上有个 _pluginCompat 属性是同步保险钩子，并且注册了两个 handler，这两个 handler 的触发时机是在于你调用 plugin 方法的时候，先将你传入的插件名 camelize 化，然后在 hooks 属性上寻找对应的钩子实例，并且调用 tap 方法真正注册 handler。
+
+这么做的目的在于什么呢？因为 webpack 的 Compiler 类就是继承于 Tapable，所以 webpack 与 Tapable 升级了，由于内部做了一定的兼容，不会对用户以前的 plugin 造成任何影响。所以用户不用再重写他们的 plugin 了。对于 webpack 开发插件，只需要提供带有 apply 方法的对象或者提供一个函数，插件在钩子实例上注册 handler 的时候，依然可以通过 compiler.plugin 来注册插件，但是命令行会打印出提示语句，提示你尽量使用新语法，可以看出插件升级之后的影响也是降到最低。
+
+## 所获
+
+经过分析了 tapable-0.2.8 以及 tapable-2.0.0-beta 版本的源码，深刻地体会到作者 js 的功底之深厚，前一个版本对于 js 基础好一点的人都能写出来，但是后一个版本的整体架构设计，以及对前一个版本的兼容都是做的非常好的。之前看了 javascript 设计模式什么的，现在都觉得都是泛泛之谈，而真正能应用于实际场景才说明你对各种设计模式融会贯通，不是为了追求设计模式，在无形当中，你的感觉会带着你走，会写出高质量的代码。这也是**大量阅读优秀源码**的好处。比如 Vue、Vuex、Vue-Router 的架构设计，以及[这篇Vue源码解析](https://ustbhuangyi.github.io/vue-analysis/)。
