@@ -29,6 +29,13 @@ module.exports = {
     sidebar: {
       '/code/' : [
         {
+          title: '软件素养',
+          collapsable: false,
+          children: [
+            'software/uml-class-design.md'
+          ]
+        },
+        {
           title: 'Vue',
           collapsable: false,
           children: [

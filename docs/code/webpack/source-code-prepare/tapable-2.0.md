@@ -21,12 +21,12 @@
   SyncBailHook   | `tap` | 同步钩子，只要执行的 handler 有返回值，剩余 handler 不执行
   SyncLoopHook   | `tap` | 同步钩子，只要执行的 handler 有返回值，一直循环执行此 handler
   SyncWaterfallHook  | `tap` | 同步钩子，上一个 handler 的返回值作为下一个 handler 的输入值
-  AsyncParallelBailHook  | `tap` | 异步钩子，handler 并行触发，但是跟 handler 内部调用回调函数的逻辑有关
-  AsyncParallelHook  | `tap` | 异步钩子，handler 并行触发
-  AsyncSeriesBailHook  | `tap` | 异步钩子，handler 串行触发，但是跟 handler 内部调用回调函数的逻辑有关
-  AsyncSeriesHook  | `tap` | 异步钩子，handler 串行触发
-  AsyncSeriesLoopHook  | `tap` | 异步钩子，可以触发 handler 循环调用
-  AsyncSeriesWaterfallHook  | `tap` | 异步钩子，上一个 handler 可以根据内部的回调函数传值给下一个 handler
+  AsyncParallelBailHook  | `tap`， `tapAsync`，`tapPromise` | 异步钩子，handler 并行触发，但是跟 handler 内部调用回调函数的逻辑有关
+  AsyncParallelHook  | `tap`， `tapAsync`，`tapPromise` | 异步钩子，handler 并行触发
+  AsyncSeriesBailHook  | `tap`， `tapAsync`，`tapPromise` | 异步钩子，handler 串行触发，但是跟 handler 内部调用回调函数的逻辑有关
+  AsyncSeriesHook  | `tap`， `tapAsync`，`tapPromise` | 异步钩子，handler 串行触发
+  AsyncSeriesLoopHook  | `tap`， `tapAsync`，`tapPromise` | 异步钩子，可以触发 handler 循环调用
+  AsyncSeriesWaterfallHook  | `tap`， `tapAsync`，`tapPromise` | 异步钩子，上一个 handler 可以根据内部的回调函数传值给下一个 handler
 
 ## Hook Helper 与 Tapable 类
 
