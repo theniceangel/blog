@@ -15,5 +15,6 @@ git add -A
 git commit -m 'deploy'
 
 git push -f "https://${token}@github.com/theniceangel/blog.git" master:gh-pages
+# git push -f "git@github.com/theniceangel/blog.git" master:gh-pages
 
 cd -
