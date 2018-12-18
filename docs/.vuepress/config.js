@@ -21,6 +21,11 @@ module.exports = {
         items: []
       },
       { 
+        text: '资源', 
+        link: '/sources/index',
+        items: []
+      },
+      { 
         text: 'Github', 
         link: 'https://github.com/theniceangel',
         items: []
