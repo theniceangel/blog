@@ -18,4 +18,4 @@
 4.  在解析的过程中，利用不同的 Loader 去做转换，并且在不同的时期，执行 Plugins 的回调逻辑。
 5.  最后输出 chunk，完成打包。
 
-<img :src="$withBase('/assets/webpack-process.png')" width="100%" alt="tapable-2.0.0.list">
+<img :src="$withBase('/assets/webpack/webpack-process.png')" width="100%" alt="tapable-2.0.0.list">

@@ -70,6 +70,13 @@ module.exports = {
           children: [
             'webpack/source-code/init.md'
           ]
+        },
+        {
+          title: 'webpack 源码之 Class 篇',
+          collapsable: false,
+          children: [
+            'webpack/source-code-class/dependency.md'
+          ]
         }
       ],
       '/books/' : [
