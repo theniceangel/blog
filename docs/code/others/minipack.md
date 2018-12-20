@@ -1,6 +1,6 @@
 # 手写 mini 打包工具
 
-最近在看 webpack 的源码，所以先浏览了几遍中文官网，发现中文官网有很多错误的地方，给他们提了 pr 也没人合代码，下定决心弃掉中文官网，因此从英文官网开始看起，偶然间发现了一个 youtube 的视频[Live Coding a Simple Module Bundler](https://www.youtube.com/watch?v=Gc9-7PBqOC8)，这个视频的内容是讲解如何编写一个 mini 版本的 webpack。过程很简单，一步步分析下。
+最近在看 webpack 的源码，所以先浏览了几遍中文官网，发现中文官网有很多错误的地方，给他们提了 pr 也没人合代码，下定决心弃掉中文官网，因此从英文官网开始看起，偶然间发现了一个 youtube 的视频[Live Coding a Simple Module Bundler](https://www.youtube.com/watch?v=Gc9-7PBqOC8)，这个视频的内容是讲解如何编写一个 mini 版本的 webpack。看起来很简单，但是很有趣，写篇读后感吧。
 
 ## 准备
 
@@ -56,7 +56,7 @@ const createAsset = (filename) => {
 }
 ```
 
-我们得通过一个函数来收集依赖，命名为 `createAsset`，入参是文件路径，通过 fs.readFileSync 得到文件内容。这个时候，我们需要知道到底依赖了哪些其他模块，也就是检验 import 语法后的值，引入了 babylon 这个工具，将文件内容字符串转化成 AST，并且通过 babel-traverse 去遍历生成的 AST，在遍历的时候，就能找到依赖。其中由于我们模块使用了 ES6 的语法，所以用 babel 转化成 ES5 的语法，最后就得出了这个 module 的信息。
+我们得通过一个函数来收集依赖，命名为 `createAsset`，入参是文件路径，通过 fs.readFileSync 得到文件内容。这个时候，我们需要知道到底依赖了哪些其他模块，也就是检验 import 语法后的值，引入了 `babylon` 这个工具，将文件内容字符串转化成 AST，并且通过 `babel-traverse` 去遍历生成的 AST，在遍历的时候，就能找到依赖。其中由于我们模块使用了 ES6 的语法，所以用 babel 转化成 ES5 的语法，最后就得出了这个 module 的信息。
 
 从上面看，这只是解析一个 module 的函数，由于 module 存在各种依赖的关系，我们怎么得到所有的模块的依赖关系呢。
 

@@ -82,7 +82,7 @@ module.exports = {
           title: '杂项',
           collapsable: false,
           children: [
-            'webpack/others/minipack.md'
+            'others/minipack.md'
           ]
         }
       ],
