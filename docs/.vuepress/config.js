@@ -77,6 +77,13 @@ module.exports = {
           children: [
             'webpack/source-code-class/dependency.md'
           ]
+        },
+        {
+          title: '杂项',
+          collapsable: false,
+          children: [
+            'webpack/others/minipack.md'
+          ]
         }
       ],
       '/books/' : [
