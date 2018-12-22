@@ -53,7 +53,8 @@ module.exports = {
           title: '异步编程',
           collapsable: false,
           children: [
-            'async/co.md'
+            'async/co.md',
+            'async/promise.md'
           ]
         },
         {
@@ -82,7 +83,8 @@ module.exports = {
           title: '杂项',
           collapsable: false,
           children: [
-            'others/minipack.md'
+            'others/minipack.md',
+            'others/flatten-array.md'
           ]
         }
       ],
