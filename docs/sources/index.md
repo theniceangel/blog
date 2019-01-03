@@ -4,6 +4,8 @@
 
 [学习资源合集](https://juejin.im/entry/5b9e4a135188255c3a2d3695)
 
+[TypeScript 精通指南](https://nodelover.gitbook.io/typescript/ji-chu-ren-zhi)
+
 ## Github 管理工具
 
 [astral](https://app.astralapp.com/dashboard)
