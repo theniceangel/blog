@@ -5,28 +5,28 @@ module.exports = {
   description: '每天都是充实的一天。',
   themeConfig: {
     nav: [
-      { 
-        text: '编程', 
+      {
+        text: '编程',
         link: '/code/vue/vuex',
         items: []
       },
-      { 
-        text: '书籍', 
+      {
+        text: '书籍',
         link: '/books/literature/lostParadise',
         items: []
       },
-      { 
-        text: '文章', 
+      {
+        text: '文章',
         link: '/articles/index',
         items: []
       },
-      { 
-        text: '资源', 
+      {
+        text: '资源',
         link: '/sources/index',
         items: []
       },
-      { 
-        text: 'Github', 
+      {
+        text: 'Github',
         link: 'https://github.com/theniceangel',
         items: []
       }
@@ -84,7 +84,8 @@ module.exports = {
           collapsable: false,
           children: [
             'others/minipack.md',
-            'others/flatten-array.md'
+            'others/flatten-array.md',
+            'others/regex.md'
           ]
         }
       ],
