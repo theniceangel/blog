@@ -41,6 +41,13 @@ module.exports = {
           ]
         },
         {
+          title: '数据结构',
+          collapsable: false,
+          children: [
+            'data-structure/binary-tree.md'
+          ]
+        },
+        {
           title: 'Vue',
           collapsable: false,
           children: [
