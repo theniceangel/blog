@@ -57,6 +57,13 @@ module.exports = {
           ]
         },
         {
+          title: '源码篇',
+          collapsable: false,
+          children: [
+            'sources/default.md'
+          ]
+        },
+        {
           title: '异步编程',
           collapsable: false,
           children: [
