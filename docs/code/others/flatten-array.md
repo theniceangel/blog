@@ -16,7 +16,7 @@ const flatten = (arr) => {
     })
   }
 
-  recursive(item)
+  recursive(arr)
   return ret
 }
 flatten([1,[2,[3,[5]]]]) // [1, 2, 3, 5]
